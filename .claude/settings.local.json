@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m 'Feat: add insights aggregation endpoints for ACME business questions *)"
+    ]
+  }
+}
