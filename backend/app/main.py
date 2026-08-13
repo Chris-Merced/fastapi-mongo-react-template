@@ -9,6 +9,7 @@ source files change.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.mongodb import close_mongo_connection, connect_to_mongo
 from app.routers import achievements, auth, individuals, insights, teams
@@ -31,6 +32,17 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="ACME Team Management API", lifespan=lifespan)
+
+# Vite's dev server runs on a different origin (port) than the API, so the
+# browser enforces CORS - without this, fetch()/axios calls from the React
+# app would be blocked client-side even though the request itself is fine.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(auth.router)
 app.include_router(individuals.router)
