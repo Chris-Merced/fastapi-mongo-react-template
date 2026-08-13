@@ -2,16 +2,30 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.core.deps import get_current_user, require_role
 from app.db.helpers import to_object_id, with_timestamps
 from app.db.mongodb import get_database
 from app.models.individual import IndividualCreate, IndividualOut, IndividualUpdate
+from app.models.user import Role
 
-router = APIRouter(prefix="/individuals", tags=["individuals"])
+# Router-level dependency: EVERY route below requires a valid JWT, i.e.
+# you must be logged in to even read this data. Mutating routes layer an
+# additional role check on top via their own `dependencies=`.
+router = APIRouter(
+    prefix="/individuals", tags=["individuals"], dependencies=[Depends(get_current_user)]
+)
+
+write_access = Depends(require_role(Role.admin, Role.manager))
 
 COLLECTION = "individuals"
 
 
-@router.post("", response_model=IndividualOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=IndividualOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[write_access],
+)
 async def create_individual(
     individual: IndividualCreate, db: AsyncIOMotorDatabase = Depends(get_database)
 ):
@@ -40,7 +54,9 @@ async def get_individual(
     return individual
 
 
-@router.patch("/{individual_id}", response_model=IndividualOut)
+@router.patch(
+    "/{individual_id}", response_model=IndividualOut, dependencies=[write_access]
+)
 async def update_individual(
     individual_id: str,
     update: IndividualUpdate,
@@ -57,7 +73,9 @@ async def update_individual(
     return result
 
 
-@router.delete("/{individual_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{individual_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[write_access]
+)
 async def delete_individual(
     individual_id: str, db: AsyncIOMotorDatabase = Depends(get_database)
 ):

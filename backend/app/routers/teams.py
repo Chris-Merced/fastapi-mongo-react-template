@@ -2,11 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 
+from app.core.deps import get_current_user, require_role
 from app.db.helpers import to_object_id, with_timestamps
 from app.db.mongodb import get_database
 from app.models.team import TeamCreate, TeamOut, TeamUpdate
+from app.models.user import Role
 
-router = APIRouter(prefix="/teams", tags=["teams"])
+router = APIRouter(
+    prefix="/teams", tags=["teams"], dependencies=[Depends(get_current_user)]
+)
+
+write_access = Depends(require_role(Role.admin, Role.manager))
 
 COLLECTION = "teams"
 
@@ -27,7 +33,9 @@ async def _ensure_individual_exists(
         )
 
 
-@router.post("", response_model=TeamOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=TeamOut, status_code=status.HTTP_201_CREATED, dependencies=[write_access]
+)
 async def create_team(team: TeamCreate, db: AsyncIOMotorDatabase = Depends(get_database)):
     await _ensure_individual_exists(db, team.leader_id, "leader_id")
     if team.org_leader_id is not None:
@@ -51,7 +59,7 @@ async def get_team(team_id: str, db: AsyncIOMotorDatabase = Depends(get_database
     return team
 
 
-@router.patch("/{team_id}", response_model=TeamOut)
+@router.patch("/{team_id}", response_model=TeamOut, dependencies=[write_access])
 async def update_team(
     team_id: str, update: TeamUpdate, db: AsyncIOMotorDatabase = Depends(get_database)
 ):
@@ -71,7 +79,9 @@ async def update_team(
     return result
 
 
-@router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{team_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[write_access]
+)
 async def delete_team(team_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     result = await db[COLLECTION].delete_one({"_id": to_object_id(team_id)})
     if result.deleted_count == 0:
