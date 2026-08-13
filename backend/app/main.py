@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.db.mongodb import close_mongo_connection, connect_to_mongo
-from app.routers import achievements, auth, individuals, teams
+from app.routers import achievements, auth, individuals, insights, teams
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app.include_router(auth.router)
 app.include_router(individuals.router)
 app.include_router(teams.router)
 app.include_router(achievements.router)
+app.include_router(insights.router)
 
 
 @app.get("/health")
